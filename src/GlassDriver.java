@@ -1,9 +1,9 @@
 import java.util.*;
 import java.io.*;
 
-//binning
-//no data imputation
-//chunks for 10-fold cross validation ARE shuffled in this class
+// Binning
+// No data imputation
+// Chunks for 10-fold cross-validation ARE shuffled in this class
 public class GlassDriver {
 
     // Split the dataset into 10 chunks
@@ -68,97 +68,11 @@ public class GlassDriver {
                 labels[lineNum] = Integer.parseInt(rawData[10]);
 
                 // Fill the data array (columns 2 to 10)
-                for (int i = 1; i <= 9; i++) {
-                    if (Double.parseDouble(rawData[i]) < .001) {
-                        data[lineNum][i - 1] = .001;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < .2) {
-                        data[lineNum][i - 1] = .2;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < .5) {
-                        data[lineNum][i - 1] = .5;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 1) {
-                        data[lineNum][i - 1] = 1;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 1.515) {
-                        data[lineNum][i - 1] = 1.515;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 1.517) {
-                        data[lineNum][i - 1] = 1.517;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 1.519) {
-                        data[lineNum][i - 1] = 1.519;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 1.525) {
-                        data[lineNum][i - 1] = 1.525;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 2) {
-                        data[lineNum][i - 1] = 2;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 2.75) {
-                        data[lineNum][i - 1] = 2.75;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 3.5) {
-                        data[lineNum][i - 1] = 3.5;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 3.75) {
-                        data[lineNum][i - 1] = 3.75;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 4.5) {
-                        data[lineNum][i - 1] = 4.5;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 8) {
-                        data[lineNum][i - 1] = 8;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 9) {
-                        data[lineNum][i - 1] = 9;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 10) {
-                        data[lineNum][i - 1] = 10;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 13) {
-                        data[lineNum][i - 1] = 13;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 14) {
-                        data[lineNum][i - 1] = 14;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 15) {
-                        data[lineNum][i - 1] = 15;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 70) {
-                        data[lineNum][i - 1] = 70;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 72) {
-                        data[lineNum][i - 1] = 72;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 72.5) {
-                        data[lineNum][i - 1] = 72.5;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 73) {
-                        data[lineNum][i - 1] = 73;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 73.5) {
-                        data[lineNum][i - 1] = 73.5;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 75) {
-                        data[lineNum][i - 1] = 75;
-                    }
-                    else if (Double.parseDouble(rawData[i]) < 76) {
-                        data[lineNum][i - 1] = 76;
-                    }
+                for (int i = 1; i < rawData.length - 1; i++) {
+                    data[lineNum][i - 1] = Double.parseDouble(rawData[i]);
                 }
 
                 lineNum++;
-            }
-
-            // print the data to verify
-            for (int i = 0; i < lineCount; i++) {
-                System.out.print("Label: " + labels[i] + " Data: ");
-                for (int j = 0; j < 9; j++) {
-                    System.out.print(data[i][j] + " ");
-                }
-                System.out.println();
             }
 
             stdin.close();
@@ -176,8 +90,8 @@ public class GlassDriver {
             // Perform 10-fold cross-validation
             for (int i = 0; i < 10; i++) {
                 // Create training and testing sets
-                List<Object[]> trainingData = new ArrayList<>();
-                List<Object> trainingLabels = new ArrayList<>();
+                List<List<Double>> trainingData = new ArrayList<>();
+                List<String> trainingLabels = new ArrayList<>();
 
                 Object[][] testData = chunks.get(i);
                 Object[] testLabels = new Object[testData.length];
@@ -189,22 +103,19 @@ public class GlassDriver {
                 for (int j = 0; j < 10; j++) {
                     if (j != i) {
                         for (Object[] row : chunks.get(j)) {
-                            trainingLabels.add(row[row.length - 1]);  // Last column is label
-                            Object[] features = new Object[row.length - 1];
-                            System.arraycopy(row, 0, features, 0, row.length - 1);
+                            trainingLabels.add(String.valueOf(row[row.length - 1]));  // Last column is label
+                            List<Double> features = new ArrayList<>();
+                            for (int k = 0; k < row.length - 1; k++) {
+                                features.add((Double) row[k]);
+                            }
                             trainingData.add(features);
                         }
                     }
                 }
 
-                // Convert training data to array form
-                Object[][] trainingArray = new Object[trainingData.size()][];
-                trainingData.toArray(trainingArray);
-                Object[] trainingLabelsArray = trainingLabels.toArray(new Object[0]);
-
                 // Initialize and train the k-NN model
-                int k = 3; // You can tune this value later
-                KNN knn = new KNN(k);
+                int k = 1; // You can tune this value later
+                KNN knn = new KNN(k, 1.0, 0.5); // Set sigma and error threshold as needed
                 knn.fit(trainingData, trainingLabels);
 
                 // Test the classifier
@@ -213,34 +124,36 @@ public class GlassDriver {
                 int falsePositives = 0;
                 int falseNegatives = 0;
                 for (int j = 0; j < testData.length; j++) {
-                    Object[] testInstance = new Object [testData[j].length - 1];
-                    System.arraycopy(testData[j], 0, testInstance, 0, testData[j].length - 1);
+                    List<Double> testInstance = new ArrayList<>();
+                    for (int l = 0; l < testData[j].length - 1; l++) {
+                        testInstance.add((Double) testData[j][l]);
+                    }
 
-                    Object predicted = classifier.classify(testInstance);
-                    Object actual = testLabels[j];
+                    String predicted = knn.predict(testInstance);
+                    String actual = testLabels[j].toString();
 
                     // Print the test data, predicted label, and actual label
                     System.out.print("Test Data: [ ");
-                    for (Object feature : testInstance) {
+                    for (Double feature : testInstance) {
                         System.out.print(feature + " ");
                     }
                     System.out.println("] Predicted: " + predicted + " Actual: " + actual);
 
-
-                    if (predicted.equals(testLabels[j])) {
+                    if (predicted.equals(actual)) {
                         correctPredictions++;
                     }
                     // Get true positives, false positives, and false negatives
-                    if (predicted.equals(1)) {
-                        if (actual.equals(1)) {
+                    if (predicted.equals("1")) {
+                        if (actual.equals("1")) {
                             truePositives++;
                         } else {
                             falsePositives++;
                         }
-                    } else if (actual.equals(1)) {
+                    } else if (actual.equals("1")) {
                         falseNegatives++;
                     }
                 }
+
                 // Calculate precision and recall
                 double precision = truePositives / (double) (truePositives + falsePositives);
                 double recall = truePositives / (double) (truePositives + falseNegatives);
@@ -249,12 +162,15 @@ public class GlassDriver {
 
                 double f1Score = 2 * (precision * recall) / (precision + recall);
                 totalF1 += f1Score;
+
                 // Calculate accuracy for this fold
                 double accuracy = (double) correctPredictions / testData.length;
                 totalAccuracy += accuracy;
+
                 // Calculate 0/1 loss
                 double loss01 = 1.0 - (double) correctPredictions / testData.length;
                 total01loss += loss01;
+
                 // Print loss info
                 System.out.println("Number of correct predictions: " + correctPredictions);
                 System.out.println("Number of test instances: " + testData.length);
@@ -263,7 +179,6 @@ public class GlassDriver {
                 System.out.println("Precision for class 1 (fold " + (i + 1) + "): " + precision);
                 System.out.println("Recall for class 1 (fold " + (i + 1) + "): " + recall);
                 System.out.println("F1 Score for class 1 (fold " + (i + 1) + "): " + f1Score);
-
             }
 
             // Average accuracy across all 10 folds
@@ -283,10 +198,3 @@ public class GlassDriver {
         }
     }
 }
-
-
-
-
-
-
-

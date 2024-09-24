@@ -68,7 +68,7 @@ public class SoybeanDriver {
                 labels[lineNum] = rawData[35];
 
                 for (int i = 0; i < rawData.length - 1; i++) {
-                    data[lineNum][i] = Integer.parseInt(rawData[i]);
+                    data[lineNum][i] = Double.parseDouble(rawData[i]);
                 }
 
                 lineNum++;
@@ -89,8 +89,8 @@ public class SoybeanDriver {
             // Perform 10-fold cross-validation
             for (int i = 0; i < 10; i++) {
                 // Create training and testing sets
-                List<Object[]> trainingData = new ArrayList<>();
-                List<Object> trainingLabels = new ArrayList<>();
+                List<List<Double>> trainingData = new ArrayList<>();
+                List<String> trainingLabels = new ArrayList<>();
 
                 Object[][] testData = chunks.get(i);
                 Object[] testLabels = new Object[testData.length];
@@ -98,28 +98,23 @@ public class SoybeanDriver {
                     testLabels[j] = testData[j][testData[j].length - 1]; // Last column is label
                 }
 
-
-
                 // Combine the other 9 chunks into the training set
                 for (int j = 0; j < 10; j++) {
                     if (j != i) {
                         for (Object[] row : chunks.get(j)) {
-                            trainingLabels.add(row[row.length - 1]);  // Last column is label
-                            Object[] features = new Object[row.length - 1];
-                            System.arraycopy(row, 0, features, 0, row.length - 1);
+                            trainingLabels.add(String.valueOf(row[row.length - 1]));  // Last column is label
+                            List<Double> features = new ArrayList<>();
+                            for (int k = 0; k < row.length - 1; k++) {
+                                features.add((Double) row[k]);
+                            }
                             trainingData.add(features);
                         }
                     }
                 }
 
-                // Convert training data to array form
-                Object[][] trainingArray = new Object[trainingData.size()][];
-                trainingData.toArray(trainingArray);
-                Object[] trainingLabelsArray = trainingLabels.toArray(new Object[0]);
-
                 // Initialize and train the k-NN model
-                int k = 3; // You can tune this value later
-                KNN knn = new KNN(k);
+                int k = 2; // You can tune this value later
+                KNN knn = new KNN(k, 1, 1); // Set sigma and error threshold as needed
                 knn.fit(trainingData, trainingLabels);
 
                 // Test the classifier
@@ -128,21 +123,22 @@ public class SoybeanDriver {
                 int falsePositives = 0;
                 int falseNegatives = 0;
                 for (int j = 0; j < testData.length; j++) {
-                    Object[] testInstance = new Object[testData[j].length - 1];
-                    System.arraycopy(testData[j], 0, testInstance, 0, testData[j].length - 1);
+                    List<Double> testInstance = new ArrayList<>();
+                    for (int l = 0; l < testData[j].length - 1; l++) {
+                        testInstance.add((Double) testData[j][l]);
+                    }
 
-                    Object predicted = classifier.classify(testInstance);
-                    Object actual = testLabels[j];
+                    String predicted = knn.predict(testInstance);
+                    String actual = testLabels[j].toString();
 
                     // Print the test data, predicted label, and actual label
                     System.out.print("Test Data: [ ");
-                    for (Object feature : testInstance) {
+                    for (Double feature : testInstance) {
                         System.out.print(feature + " ");
                     }
                     System.out.println("] Predicted: " + predicted + " Actual: " + actual);
 
-
-                    if (predicted.equals(testLabels[j])) {
+                    if (predicted.equals(actual)) {
                         correctPredictions++;
                     }
                     // Get true positives, false positives, and false negatives
@@ -156,6 +152,7 @@ public class SoybeanDriver {
                         falseNegatives++;
                     }
                 }
+
                 // Calculate precision and recall
                 double precision = truePositives / (double) (truePositives + falsePositives);
                 double recall = truePositives / (double) (truePositives + falseNegatives);
@@ -164,9 +161,11 @@ public class SoybeanDriver {
 
                 double f1Score = 2 * (precision * recall) / (precision + recall);
                 totalF1 += f1Score;
+
                 // Calculate accuracy for this fold
                 double accuracy = (double) correctPredictions / testData.length;
                 totalAccuracy += accuracy;
+
                 // Calculate 0/1 loss
                 double loss01 = 1.0 - (double) correctPredictions / testData.length;
                 total01loss += loss01;
@@ -179,7 +178,6 @@ public class SoybeanDriver {
                 System.out.println("Precision for class D1 (fold " + (i + 1) + "): " + precision);
                 System.out.println("Recall for class D1 (fold " + (i + 1) + "): " + recall);
                 System.out.println("F1 Score for class D1 (fold " + (i + 1) + "): " + f1Score);
-
             }
 
             // Average accuracy across all 10 folds

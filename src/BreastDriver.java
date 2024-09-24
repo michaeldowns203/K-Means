@@ -1,9 +1,9 @@
 import java.util.*;
 import java.io.*;
 
-//no binning
-//data imputation - we replaced each instance of "?" with a random value 1-10
-//chunks for 10-fold cross validation are NOT shuffled in this class (but they were shuffled to get our experimental data)
+// Binning
+// No data imputation
+// Chunks for 10-fold cross-validation ARE shuffled in this class
 public class BreastDriver {
 
     // Split the dataset into 10 chunks
@@ -17,7 +17,7 @@ public class BreastDriver {
         }
 
         // Shuffle the dataset to ensure randomness
-        //Collections.shuffle(dataset);
+        Collections.shuffle(dataset);
 
         // Split into chunks
         int chunkSize = dataset.size() / numChunks;
@@ -35,7 +35,6 @@ public class BreastDriver {
     }
 
     public static void main(String[] args) throws IOException {
-        // Assume data and labels are loaded as in your previous driver code
         String inputFile1 = "src/breast-cancer-wisconsin.data";
         try {
             FileInputStream fis = new FileInputStream(inputFile1);
@@ -65,15 +64,15 @@ public class BreastDriver {
             while ((line = stdin.readLine()) != null) {
                 String[] rawData = line.split(",");
 
-                // Assign the label (first column)
+                // Assign the label (last column)
                 labels[lineNum] = Integer.parseInt(rawData[10]);
 
                 // Fill the data array (columns 2 to 10)
-                for (int i = 1; i <= 9; i++) {
+                for (int i = 1; i < rawData.length - 1; i++) {
                     if (rawData[i].equals("?")) {
-                        data[lineNum][i - 1] = (int) (Math.random() * 10) + 1; // Handle missing values
+                        data[lineNum][i - 1] = (Math.random() * 10) + 1; // Handle missing values
                     } else {
-                        data[lineNum][i - 1] = Integer.parseInt(rawData[i]);
+                        data[lineNum][i - 1] = Double.parseDouble(rawData[i]);
                     }
                 }
 
@@ -95,8 +94,8 @@ public class BreastDriver {
             // Perform 10-fold cross-validation
             for (int i = 0; i < 10; i++) {
                 // Create training and testing sets
-                List<Object[]> trainingData = new ArrayList<>();
-                List<Object> trainingLabels = new ArrayList<>();
+                List<List<Double>> trainingData = new ArrayList<>();
+                List<String> trainingLabels = new ArrayList<>();
 
                 Object[][] testData = chunks.get(i);
                 Object[] testLabels = new Object[testData.length];
@@ -108,22 +107,19 @@ public class BreastDriver {
                 for (int j = 0; j < 10; j++) {
                     if (j != i) {
                         for (Object[] row : chunks.get(j)) {
-                            trainingLabels.add(row[row.length - 1]);  // Last column is label
-                            Object[] features = new Object[row.length - 1];
-                            System.arraycopy(row, 0, features, 0, row.length - 1);
+                            trainingLabels.add(String.valueOf(row[row.length - 1]));  // Last column is label
+                            List<Double> features = new ArrayList<>();
+                            for (int k = 0; k < row.length - 1; k++) {
+                                features.add((Double) row[k]);
+                            }
                             trainingData.add(features);
                         }
                     }
                 }
 
-                // Convert training data to array form
-                Object[][] trainingArray = new Object[trainingData.size()][];
-                trainingData.toArray(trainingArray);
-                Object[] trainingLabelsArray = trainingLabels.toArray(new Object[0]);
-
                 // Initialize and train the k-NN model
-                int k = 3; // You can tune this value later
-                KNN knn = new KNN(k);
+                int k = 10; // You can tune this value later
+                KNN knn = new KNN(k, 1, 1); // Set sigma and error threshold as needed
                 knn.fit(trainingData, trainingLabels);
 
                 // Test the classifier
@@ -132,36 +128,37 @@ public class BreastDriver {
                 int falsePositives = 0;
                 int falseNegatives = 0;
                 for (int j = 0; j < testData.length; j++) {
-                    Object[] testInstance = new Object[testData[j].length - 1];
-                    System.arraycopy(testData[j], 0, testInstance, 0, testData[j].length - 1);
-
-                    Object predicted = classifier.classify(testInstance);
-                    Object actual = testLabels[j];
-
-                    if (i == 9) {
-                        // Print the test data, predicted label, and actual label
-                        System.out.print("Test Data: [ ");
-                        for (Object feature : testInstance) {
-                            System.out.print(feature + " ");
-                        }
-                        System.out.println("] Predicted: " + predicted + " Actual: " + actual);
+                    List<Double> testInstance = new ArrayList<>();
+                    for (int l = 0; l < testData[j].length - 1; l++) {
+                        testInstance.add((Double) testData[j][l]);
                     }
 
-                    if (predicted.equals(testLabels[j])) {
+                    String predicted = knn.predict(testInstance);
+                    String actual = testLabels[j].toString();
+
+                    // Print the test data, predicted label, and actual label
+                    System.out.print("Test Data: [ ");
+                    for (Double feature : testInstance) {
+                        System.out.print(feature + " ");
+                    }
+                    System.out.println("] Predicted: " + predicted + " Actual: " + actual);
+
+                    if (predicted.equals(actual)) {
                         correctPredictions++;
                     }
-                    // Check if the predicted class is 4 (positive class)
-                    if (predicted.equals(4)) {
-                        if (actual.equals(4)) {
-                            truePositives++;  // Correctly predicted class 4 (True Positive)
+                    // Get true positives, false positives, and false negatives
+                    if (predicted.equals("2")) {
+                        if (actual.equals("2")) {
+                            truePositives++;
                         } else {
-                            falsePositives++;  // Incorrectly predicted class 4 (False Positive)
+                            falsePositives++;
                         }
-                    } else if (actual.equals(4)) {
-                        falseNegatives++;  // Incorrectly predicted something else, but actual is class 4 (False Negative)
+                    } else if (actual.equals("2")) {
+                        falseNegatives++;
                     }
                 }
-                // Calculate precision and recall for class 4
+
+                // Calculate precision and recall
                 double precision = truePositives / (double) (truePositives + falsePositives);
                 double recall = truePositives / (double) (truePositives + falseNegatives);
                 totalPrecision += precision;
@@ -169,23 +166,23 @@ public class BreastDriver {
 
                 double f1Score = 2 * (precision * recall) / (precision + recall);
                 totalF1 += f1Score;
+
                 // Calculate accuracy for this fold
                 double accuracy = (double) correctPredictions / testData.length;
                 totalAccuracy += accuracy;
+
                 // Calculate 0/1 loss
                 double loss01 = 1.0 - (double) correctPredictions / testData.length;
                 total01loss += loss01;
 
-                if (i == 9) {
-                    // Print loss info
-                    System.out.println("Number of correct predictions: " + correctPredictions);
-                    System.out.println("Number of test instances: " + testData.length);
-                    System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
-                    System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
-                    System.out.println("Precision for class 4 (fold " + (i + 1) + "): " + precision);
-                    System.out.println("Recall for class 4 (fold " + (i + 1) + "): " + recall);
-                    System.out.println("F1 Score for class 4 (fold " + (i + 1) + "): " + f1Score);
-                }
+                // Print loss info
+                System.out.println("Number of correct predictions: " + correctPredictions);
+                System.out.println("Number of test instances: " + testData.length);
+                System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
+                System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
+                System.out.println("Precision for class 2 (fold " + (i + 1) + "): " + precision);
+                System.out.println("Recall for class 2 (fold " + (i + 1) + "): " + recall);
+                System.out.println("F1 Score for class 2 (fold " + (i + 1) + "): " + f1Score);
             }
 
             // Average accuracy across all 10 folds
@@ -194,15 +191,14 @@ public class BreastDriver {
             double averagePrecision = totalPrecision / 10;
             double averageRecall = totalRecall / 10;
             double averageF1 = totalF1 / 10;
-            //System.out.println("Average Accuracy: " + averageAccuracy);
-            //System.out.println("Average 0/1 Loss: " + average01loss);
-            //System.out.println("Average Precision for class 4: " + averagePrecision);
-            //System.out.println("Average Recall for class 4: " + averageRecall);
-            //System.out.println("Average F1 for class 4: " + averageF1);
+            System.out.println("Average Accuracy: " + averageAccuracy);
+            System.out.println("Average 0/1 Loss: " + average01loss);
+            System.out.println("Average Precision for class 2: " + averagePrecision);
+            System.out.println("Average Recall for class 2: " + averageRecall);
+            System.out.println("Average F1 for class 2: " + averageF1);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 }
-
