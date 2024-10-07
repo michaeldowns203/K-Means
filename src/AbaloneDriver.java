@@ -35,7 +35,7 @@ public class AbaloneDriver {
     }
 
     public static void main(String[] args) throws IOException {
-        String inputFile1 = "src/soybean-small.data";
+        String inputFile1 = "src/abalone.data";
         try {
             FileInputStream fis = new FileInputStream(inputFile1);
             InputStreamReader isr = new InputStreamReader(fis);
@@ -55,7 +55,7 @@ public class AbaloneDriver {
 
             // Initialize the arrays with the known size
             Object[] labels = new Object[lineCount];
-            Object[][] data = new Object[lineCount][35];
+            Object[][] data = new Object[lineCount][8];
 
             String line;
             int lineNum = 0;
@@ -65,10 +65,11 @@ public class AbaloneDriver {
                 String[] rawData = line.split(",");
 
                 // Assign the label (last column)
-                labels[lineNum] = rawData[35];
+                labels[lineNum] = rawData[8];
 
-                for (int i = 0; i < rawData.length - 1; i++) {
-                    data[lineNum][i] = Integer.parseInt(rawData[i]);
+                data[lineNum][0] = rawData[0];
+                for (int i = 1; i < rawData.length - 1; i++) {
+                    data[lineNum][i] = Double.parseDouble(rawData[i]);
                 }
 
                 lineNum++;
@@ -86,7 +87,99 @@ public class AbaloneDriver {
             double totalF1 = 0;
             double total01loss = 0;
 
-            KNN knn = new KNN(1, 1.0, 0.1);
+            // Perform 10-fold cross-validation
+            for (int i = 0; i < 10; i++) {
+                // Create training and testing sets
+                List<List<Double>> trainingData = new ArrayList<>();
+                List<String> trainingLabels = new ArrayList<>();
+
+                Object[][] testData = chunks.get(i);
+                Object[] testLabels = new Object[testData.length];
+                for (int j = 0; j < testData.length; j++) {
+                    testLabels[j] = testData[j][testData[j].length - 1]; // Last column is label
+                }
+
+                // Combine the other 9 chunks into the training set
+                for (int j = 0; j < 10; j++) {
+                    if (j != i) {
+                        for (Object[] row : chunks.get(j)) {
+                            trainingLabels.add(String.valueOf(row[row.length - 1]));  // Last column is label
+                            List<Double> features = new ArrayList<>();
+                            for (int k = 0; k < row.length - 1; k++) {
+                                features.add((Double) row[k]);
+                            }
+                            trainingData.add(features);
+                        }
+                    }
+                }
+
+                // Initialize and train the k-NN model
+                int k = 2; // You can tune this value later
+                KNN knn = new KNN(k, 1, 1); // Set sigma and error threshold as needed
+                knn.fit(trainingData, trainingLabels);
+
+                // Test the classifier
+                int correctPredictions = 0;
+                int truePositives = 0;
+                int falsePositives = 0;
+                int falseNegatives = 0;
+                for (int j = 0; j < testData.length; j++) {
+                    List<Double> testInstance = new ArrayList<>();
+                    for (int l = 0; l < testData[j].length - 1; l++) {
+                        testInstance.add((Double) testData[j][l]);
+                    }
+
+                    String predicted = knn.predictValue(testInstance);
+                    String actual = testLabels[j].toString();
+
+                    // Print the test data, predicted label, and actual label
+                    System.out.print("Test Data: [ ");
+                    for (Double feature : testInstance) {
+                        System.out.print(feature + " ");
+                    }
+                    System.out.println("] Predicted: " + predicted + " Actual: " + actual);
+
+                    if (predicted.equals(actual)) {
+                        correctPredictions++;
+                    }
+                    // Get true positives, false positives, and false negatives
+                    if (predicted.equals("D1")) {
+                        if (actual.equals("D1")) {
+                            truePositives++;
+                        } else {
+                            falsePositives++;
+                        }
+                    } else if (actual.equals("D1")) {
+                        falseNegatives++;
+                    }
+                }
+
+                // Calculate precision and recall
+                double precision = truePositives / (double) (truePositives + falsePositives);
+                double recall = truePositives / (double) (truePositives + falseNegatives);
+                totalPrecision += precision;
+                totalRecall += recall;
+
+                double f1Score = 2 * (precision * recall) / (precision + recall);
+                totalF1 += f1Score;
+
+                // Calculate accuracy for this fold
+                double accuracy = (double) correctPredictions / testData.length;
+                totalAccuracy += accuracy;
+
+                // Calculate 0/1 loss
+                double loss01 = 1.0 - (double) correctPredictions / testData.length;
+                total01loss += loss01;
+
+                // Print loss info
+                System.out.println("Number of correct predictions: " + correctPredictions);
+                System.out.println("Number of test instances: " + testData.length);
+                System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
+                System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
+                System.out.println("Precision for class D1 (fold " + (i + 1) + "): " + precision);
+                System.out.println("Recall for class D1 (fold " + (i + 1) + "): " + recall);
+                System.out.println("F1 Score for class D1 (fold " + (i + 1) + "): " + f1Score);
+            }
 
             // Average accuracy across all 10 folds
             double averageAccuracy = totalAccuracy / 10;
