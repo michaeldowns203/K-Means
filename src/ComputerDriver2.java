@@ -1,9 +1,7 @@
 import java.util.*;
 import java.io.*;
 
-// Binning
-// No data imputation
-// Chunks for 10-fold cross-validation ARE shuffled in this class
+//normal 10 fold
 public class ComputerDriver2 {
     // Method to scale labels using Min-Max Scaling
     public static List<Double> minMaxScaleLabels(List<Double> labels) {
@@ -94,10 +92,10 @@ public class ComputerDriver2 {
         dataset.sort(Comparator.comparingDouble(row -> (Double) row.get(row.size() - 1)));
 
         // Extract the tuning data (10%)
-        List<List<Object>> tuningData = extractTenPercent(dataset);
+        //List<List<Object>> tuningData = extractTenPercent(dataset);
 
         // Remove the tuning data from the original dataset
-        List<List<Object>> remainingData = new ArrayList<>(dataset.subList(tuningData.size(), dataset.size()));
+        //List<List<Object>> remainingData = new ArrayList<>(dataset.subList(tuningData.size(), dataset.size()));
 
         // Create the chunks for each fold
         List<List<List<Object>>> chunks = new ArrayList<>();
@@ -110,11 +108,11 @@ public class ComputerDriver2 {
         List<List<Object>> group = new ArrayList<>();
 
         // Distribute each item into the corresponding chunk
-        for (int i = 0; i < remainingData.size(); i++) {
-            group.add(remainingData.get(i));  // Add item to the group
+        for (int i = 0; i < dataset.size(); i++) {
+            group.add(dataset.get(i));  // Add item to the group
 
             // Once the group reaches the group size, distribute it across the chunks
-            if (group.size() == groupSize || i == remainingData.size() - 1) {
+            if (group.size() == groupSize || i == dataset.size() - 1) {
                 for (int j = 0; j < group.size(); j++) {
                     int chunkIndex = j % numChunks;
                     chunks.get(chunkIndex).add(group.get(j));  // Distribute across the chunks
@@ -173,7 +171,7 @@ public class ComputerDriver2 {
             stdin.close();
 
             // Extract stratified tuning data (10%)
-            List<List<Object>> testSet = extractTenPercent(dataset);
+            //List<List<Object>> testSet = extractTenPercent(dataset);
 
             // Split the remaining dataset into stratified chunks
             List<List<List<Object>>> chunks = splitIntoStratifiedChunks(dataset, 10);
@@ -190,7 +188,7 @@ public class ComputerDriver2 {
                 List<Double> predictedList = new ArrayList<>();
                 List<Double> actualList = new ArrayList<>();
 
-                List<List<Object>> testData = testSet;
+                List<List<Object>> testData = chunks.get(i);
                 List<String> testLabels = new ArrayList<>();
                 for (List<Object> row : testData) {
                     testLabels.add(String.valueOf(row.get(row.size() - 1))); // Last column is label

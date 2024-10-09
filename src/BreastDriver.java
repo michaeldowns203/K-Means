@@ -1,6 +1,6 @@
 import java.util.*;
 import java.io.*;
-//first do wierd 10% cross validation for tuning then normal 10-fold cross validation for experiment
+//10% cross validation for tuning
 public class BreastDriver {
     public static List<List<Object>> extractTenPercent(List<List<Object>> dataset) {
         // Create a map to hold instances of each class

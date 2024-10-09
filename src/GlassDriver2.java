@@ -1,7 +1,8 @@
 import java.util.*;
 import java.io.*;
+
 //normal 10 fold
-public class BreastDriver2 {
+public class GlassDriver2 {
     public static List<List<Object>> extractTenPercent(List<List<Object>> dataset) {
         // Create a map to hold instances of each class
         Map<String, List<List<Object>>> classMap = new HashMap<>();
@@ -74,7 +75,7 @@ public class BreastDriver2 {
 
 
     public static void main(String[] args) throws IOException {
-        String inputFile1 = "src/breast-cancer-wisconsin.data";
+        String inputFile1 = "src/glass.data";
         try {
             FileInputStream fis = new FileInputStream(inputFile1);
             InputStreamReader isr = new InputStreamReader(fis);
@@ -109,11 +110,7 @@ public class BreastDriver2 {
 
                 // Fill the data row (columns 2 to 10)
                 for (int i = 1; i < rawData.length - 1; i++) {
-                    if (rawData[i].equals("?")) {
-                        row.add((Math.random() * 10) + 1); // Handle missing values
-                    } else {
-                        row.add(Double.parseDouble(rawData[i]));
-                    }
+                    row.add(Double.parseDouble(rawData[i]));
                 }
                 row.add(labels.get(lineNum)); // Add the label to the row
                 dataset.add(row);
@@ -193,13 +190,13 @@ public class BreastDriver2 {
                         correctPredictions++;
                     }
                     // Get true positives, false positives, and false negatives
-                    if (predicted.equals("4")) {
-                        if (actual.equals("4")) {
+                    if (predicted.equals("1")) {
+                        if (actual.equals("1")) {
                             truePositives++;
                         } else {
                             falsePositives++;
                         }
-                    } else if (actual.equals("4")) {
+                    } else if (actual.equals("1")) {
                         falseNegatives++;
                     }
                 }
@@ -226,9 +223,9 @@ public class BreastDriver2 {
                 System.out.println("Number of test instances: " + testSet.size());
                 System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
                 System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
-                System.out.println("Precision for class 4 (hold-out fold " + (i + 1) + "): " + precision);
-                System.out.println("Recall for class 4 (hold-out fold " + (i + 1) + "): " + recall);
-                System.out.println("F1 Score for class 4 (hold-out fold " + (i + 1) + "): " + f1Score);
+                System.out.println("Precision for class 1 (hold-out fold " + (i + 1) + "): " + precision);
+                System.out.println("Recall for class 1 (hold-out fold " + (i + 1) + "): " + recall);
+                System.out.println("F1 Score for class 1 (hold-out fold " + (i + 1) + "): " + f1Score);
             }
 
             // Average accuracy across all 10 folds
@@ -239,9 +236,9 @@ public class BreastDriver2 {
             double averageF1 = totalF1 / 10;
             System.out.println("Average Accuracy: " + averageAccuracy);
             System.out.println("Average 0/1 Loss: " + average01loss);
-            System.out.println("Average Precision for class 4: " + averagePrecision);
-            System.out.println("Average Recall for class 4: " + averageRecall);
-            System.out.println("Average F1 for class 4: " + averageF1);
+            System.out.println("Average Precision for class 1: " + averagePrecision);
+            System.out.println("Average Recall for class 1: " + averageRecall);
+            System.out.println("Average F1 for class 1: " + averageF1);
 
         } catch (IOException e) {
             e.printStackTrace();

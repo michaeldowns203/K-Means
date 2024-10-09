@@ -1,7 +1,7 @@
 import java.util.*;
 import java.io.*;
-//normal 10 fold
-public class BreastDriver2 {
+//10% cross validation for tuning
+public class BreastDriverK {
     public static List<List<Object>> extractTenPercent(List<List<Object>> dataset) {
         // Create a map to hold instances of each class
         Map<String, List<List<Object>>> classMap = new HashMap<>();
@@ -35,7 +35,7 @@ public class BreastDriver2 {
 
     public static List<List<List<Object>>> splitIntoStratifiedChunks(List<List<Object>> dataset, int numChunks) {
         // Extract 10% of the dataset
-        //List<List<Object>> removedInstances = extractTenPercent(dataset);
+        List<List<Object>> removedInstances = extractTenPercent(dataset);
 
         // Create a map to hold instances of each class
         Map<String, List<List<Object>>> classMap = new HashMap<>();
@@ -123,7 +123,7 @@ public class BreastDriver2 {
             stdin.close();
 
             // Extract 10% of the dataset for testing
-            //List<List<Object>> testSet = extractTenPercent(dataset);
+            List<List<Object>> testSet = extractTenPercent(dataset);
 
             // Split the remaining dataset into stratified chunks
             List<List<List<Object>>> chunks = splitIntoStratifiedChunks(dataset, 10);
@@ -141,8 +141,6 @@ public class BreastDriver2 {
                 List<List<Double>> trainingData = new ArrayList<>();
                 List<String> trainingLabels = new ArrayList<>();
 
-                List<List<Object>> testSet = chunks.get(i);
-
                 // Combine the other 9 chunks into the training set
                 for (int j = 0; j < 10; j++) {
                     if (j != i) {
@@ -159,8 +157,9 @@ public class BreastDriver2 {
 
                 // Initialize and train the k-NN model
                 int k = 1; // You can tune this value later
-                KNN knn = new KNN(k, 1, 1); // Bandwidth and error threshold are irrelevant
+                KMeans knn = new KMeans(k, 1, 1); // Bandwidth and error threshold are irrelevant
                 knn.fit(trainingData, trainingLabels);
+                knn.kMeansAndReduce(500, 1000);
 
                 // Test the classifier using the test set
                 int correctPredictions = 0;

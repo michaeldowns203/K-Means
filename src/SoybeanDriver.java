@@ -1,6 +1,7 @@
 import java.util.*;
 import java.io.*;
 
+//10% cross validation for tuning
 public class SoybeanDriver {
     public static List<List<Object>> extractTenPercent(List<List<Object>> dataset) {
         // Create a map to hold instances of each class

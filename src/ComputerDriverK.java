@@ -2,7 +2,7 @@ import java.util.*;
 import java.io.*;
 
 //10% cross validation for tuning
-public class ComputerDriver {
+public class ComputerDriverK {
     // Method to scale labels using Min-Max Scaling
     public static List<Double> minMaxScaleLabels(List<Double> labels) {
         // Scale the labels using Min-Max scaling
@@ -237,8 +237,9 @@ public class ComputerDriver {
 
                 // Initialize and train the k-NN model
                 int k = 3; // You can tune this value later
-                KNN knn = new KNN(k, 5, 100);
+                KMeans knn = new KMeans(k, 5, 100);
                 knn.fit(trainingData, trainingLabels);
+                knn.kMeansAndReduceRegression(150, 1000);
 
                 // Test the classifier
                 for (int j = 0; j < testData.size(); j++) {
