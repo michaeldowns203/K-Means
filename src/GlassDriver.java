@@ -1,38 +1,77 @@
 import java.util.*;
 import java.io.*;
 
-// Binning
-// No data imputation
-// Chunks for 10-fold cross-validation ARE shuffled in this class
 public class GlassDriver {
+    public static List<List<Object>> extractTenPercent(List<List<Object>> dataset) {
+        // Create a map to hold instances of each class
+        Map<String, List<List<Object>>> classMap = new HashMap<>();
 
-    // Split the dataset into 10 chunks
-    public static List<Object[][]> splitIntoChunks(Object[][] data, Object[] labels, int numChunks) {
-        List<Object[]> dataset = new ArrayList<>();
-        for (int i = 0; i < data.length; i++) {
-            Object[] combined = new Object[data[i].length + 1];
-            System.arraycopy(data[i], 0, combined, 0, data[i].length);
-            combined[combined.length - 1] = labels[i];
-            dataset.add(combined);
+        // Populate the class map
+        for (List<Object> row : dataset) {
+            String label = row.get(row.size() - 1).toString();
+            classMap.putIfAbsent(label, new ArrayList<>());
+            classMap.get(label).add(row);
         }
 
-        // Shuffle the dataset to ensure randomness
-        Collections.shuffle(dataset);
+        List<List<Object>> removedInstances = new ArrayList<>();
 
-        // Split into chunks
-        int chunkSize = dataset.size() / numChunks;
-        List<Object[][]> chunks = new ArrayList<>();
+        // Extract 10% of instances while maintaining class proportions
+        for (List<List<Object>> classInstances : classMap.values()) {
+            Random random = new Random(123);
+            Collections.shuffle(classInstances, random); // Shuffle instances within each class
 
+            // Determine the number of instances to remove (10%)
+            int numToRemove = (int) (classInstances.size() * 0.1);
+
+            // Extract the instances and add them to the removed list
+            removedInstances.addAll(classInstances.subList(0, numToRemove));
+
+            // Retain the remaining instances in the class instances list
+            classInstances.subList(0, numToRemove).clear(); // Remove the extracted instances
+        }
+
+        return removedInstances;
+    }
+
+    public static List<List<List<Object>>> splitIntoStratifiedChunks(List<List<Object>> dataset, int numChunks) {
+        // Extract 10% of the dataset
+        List<List<Object>> removedInstances = extractTenPercent(dataset);
+
+        // Create a map to hold instances of each class
+        Map<String, List<List<Object>>> classMap = new HashMap<>();
+
+        // Populate the class map with the remaining instances
+        for (List<Object> row : dataset) {
+            String label = row.get(row.size() - 1).toString();
+            classMap.putIfAbsent(label, new ArrayList<>());
+            classMap.get(label).add(row);
+        }
+
+        // Create chunks for stratified sampling
+        List<List<List<Object>>> chunks = new ArrayList<>();
         for (int i = 0; i < numChunks; i++) {
-            Object[][] chunk = new Object[chunkSize][];
-            for (int j = 0; j < chunkSize; j++) {
-                chunk[j] = dataset.get(i * chunkSize + j);
+            chunks.add(new ArrayList<>());
+        }
+
+        // Distribute remaining instances into chunks while maintaining class proportions
+        for (List<List<Object>> classInstances : classMap.values()) {
+            Random random = new Random(123);
+            Collections.shuffle(classInstances, random); // Shuffle instances within each class
+
+            // Calculate the chunk size for remaining instances
+            int chunkSize = classInstances.size() / numChunks;
+
+            // Distribute the remaining instances into chunks
+            for (int i = 0; i < numChunks; i++) {
+                int start = i * chunkSize;
+                int end = (i == numChunks - 1) ? classInstances.size() : start + chunkSize;
+                chunks.get(i).addAll(classInstances.subList(start, end));
             }
-            chunks.add(chunk);
         }
 
         return chunks;
     }
+
 
     public static void main(String[] args) throws IOException {
         String inputFile1 = "src/glass.data";
@@ -41,7 +80,7 @@ public class GlassDriver {
             InputStreamReader isr = new InputStreamReader(fis);
             BufferedReader stdin = new BufferedReader(isr);
 
-            // First, count the number of lines to determine the size of the arrays
+            // First, count the number of lines to determine the size of the lists
             int lineCount = 0;
             while (stdin.readLine() != null) {
                 lineCount++;
@@ -53,32 +92,37 @@ public class GlassDriver {
             isr = new InputStreamReader(fis);
             stdin = new BufferedReader(isr);
 
-            // Initialize the arrays with the known size
-            Object[] labels = new Object[lineCount];
-            Object[][] data = new Object[lineCount][9]; // Assuming 9 attributes (from column 2 to 10)
+            // Initialize the lists
+            List<List<Object>> dataset = new ArrayList<>();
+            List<Object> labels = new ArrayList<>();
 
             String line;
             int lineNum = 0;
 
-            // Read the file and fill the arrays
+            // Read the file and fill the dataset
             while ((line = stdin.readLine()) != null) {
                 String[] rawData = line.split(",");
+                List<Object> row = new ArrayList<>();
 
                 // Assign the label (last column)
-                labels[lineNum] = Integer.parseInt(rawData[10]);
+                labels.add(Integer.parseInt(rawData[10]));
 
-                // Fill the data array (columns 2 to 10)
+                // Fill the data row (columns 2 to 10)
                 for (int i = 1; i < rawData.length - 1; i++) {
-                    data[lineNum][i - 1] = Double.parseDouble(rawData[i]);
+                    row.add(Double.parseDouble(rawData[i]));
                 }
-
+                row.add(labels.get(lineNum)); // Add the label to the row
+                dataset.add(row);
                 lineNum++;
             }
 
             stdin.close();
 
-            // Split into 10 chunks
-            List<Object[][]> chunks = splitIntoChunks(data, labels, 10);
+            // Extract 10% of the dataset for testing
+            List<List<Object>> testSet = extractTenPercent(dataset);
+
+            // Split the remaining dataset into stratified chunks
+            List<List<List<Object>>> chunks = splitIntoStratifiedChunks(dataset, 10);
 
             // Loss instance variables
             double totalAccuracy = 0;
@@ -87,26 +131,20 @@ public class GlassDriver {
             double totalF1 = 0;
             double total01loss = 0;
 
-            // Perform 10-fold cross-validation
+            // Perform stratified 10-fold cross-validation
             for (int i = 0; i < 10; i++) {
-                // Create training and testing sets
+                // Create training sets from chunks
                 List<List<Double>> trainingData = new ArrayList<>();
                 List<String> trainingLabels = new ArrayList<>();
-
-                Object[][] testData = chunks.get(i);
-                Object[] testLabels = new Object[testData.length];
-                for (int j = 0; j < testData.length; j++) {
-                    testLabels[j] = testData[j][testData[j].length - 1]; // Last column is label
-                }
 
                 // Combine the other 9 chunks into the training set
                 for (int j = 0; j < 10; j++) {
                     if (j != i) {
-                        for (Object[] row : chunks.get(j)) {
-                            trainingLabels.add(String.valueOf(row[row.length - 1]));  // Last column is label
+                        for (List<Object> row : chunks.get(j)) {
+                            trainingLabels.add(String.valueOf(row.get(row.size() - 1)));  // Last column is label
                             List<Double> features = new ArrayList<>();
-                            for (int k = 0; k < row.length - 1; k++) {
-                                features.add((Double) row[k]);
+                            for (int k = 0; k < row.size() - 1; k++) {
+                                features.add((Double) row.get(k));
                             }
                             trainingData.add(features);
                         }
@@ -115,22 +153,28 @@ public class GlassDriver {
 
                 // Initialize and train the k-NN model
                 int k = 1; // You can tune this value later
-                KNN knn = new KNN(k, 1.0, 0.5); // Set sigma and error threshold as needed
+                KNN knn = new KNN(k, 1, 1); // Bandwidth and error threshold are irrelevant
                 knn.fit(trainingData, trainingLabels);
 
-                // Test the classifier
+                // Test the classifier using the test set
                 int correctPredictions = 0;
                 int truePositives = 0;
                 int falsePositives = 0;
                 int falseNegatives = 0;
-                for (int j = 0; j < testData.length; j++) {
+                List<String> testLabels = new ArrayList<>();
+
+                for (List<Object> row : testSet) {
+                    testLabels.add(String.valueOf(row.get(row.size() - 1))); // Last column is label
+                }
+
+                for (int j = 0; j < testSet.size(); j++) {
                     List<Double> testInstance = new ArrayList<>();
-                    for (int l = 0; l < testData[j].length - 1; l++) {
-                        testInstance.add((Double) testData[j][l]);
+                    for (int l = 0; l < testSet.get(j).size() - 1; l++) {
+                        testInstance.add((Double) testSet.get(j).get(l));
                     }
 
                     String predicted = knn.predict(testInstance);
-                    String actual = testLabels[j].toString();
+                    String actual = testLabels.get(j);
 
                     // Print the test data, predicted label, and actual label
                     System.out.print("Test Data: [ ");
@@ -164,21 +208,21 @@ public class GlassDriver {
                 totalF1 += f1Score;
 
                 // Calculate accuracy for this fold
-                double accuracy = (double) correctPredictions / testData.length;
+                double accuracy = (double) correctPredictions / testSet.size();
                 totalAccuracy += accuracy;
 
                 // Calculate 0/1 loss
-                double loss01 = 1.0 - (double) correctPredictions / testData.length;
+                double loss01 = 1.0 - (double) correctPredictions / testSet.size();
                 total01loss += loss01;
 
                 // Print loss info
                 System.out.println("Number of correct predictions: " + correctPredictions);
-                System.out.println("Number of test instances: " + testData.length);
+                System.out.println("Number of test instances: " + testSet.size());
                 System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
                 System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
-                System.out.println("Precision for class 1 (fold " + (i + 1) + "): " + precision);
-                System.out.println("Recall for class 1 (fold " + (i + 1) + "): " + recall);
-                System.out.println("F1 Score for class 1 (fold " + (i + 1) + "): " + f1Score);
+                System.out.println("Precision for class 1 (hold-out fold " + (i + 1) + "): " + precision);
+                System.out.println("Recall for class 1 (hold-out fold " + (i + 1) + "): " + recall);
+                System.out.println("F1 Score for class 1 (hold-out fold " + (i + 1) + "): " + f1Score);
             }
 
             // Average accuracy across all 10 folds
@@ -197,4 +241,5 @@ public class GlassDriver {
             e.printStackTrace();
         }
     }
+
 }

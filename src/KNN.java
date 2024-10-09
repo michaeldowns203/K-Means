@@ -48,14 +48,28 @@ public class KNN {
 
     // Predict the value for a single instance (regression)
     public double predictValue(List<Double> instance) {
+        List<Neighbor> neighbors = new ArrayList<>();
+
+        // Calculate distances from the instance to all training instances
+        for (int i = 0; i < trainingData.size(); i++) {
+            double distance = euclideanDistance(instance, trainingData.get(i));
+            neighbors.add(new Neighbor(distance, trainingLabels.get(i)));
+        }
+
+        // Sort neighbors by distance
+        Collections.sort(neighbors);
+
+        // Get the k nearest neighbors
+        List<Neighbor> kNearestNeighbors = neighbors.subList(0, Math.min(k, neighbors.size()));
+
         double weightedSum = 0.0;
         double totalWeight = 0.0;
 
-        // Calculate weighted contributions from each training instance
-        for (int i = 0; i < trainingData.size(); i++) {
-            double distance = euclideanDistance(instance, trainingData.get(i));
-            double weight = gaussianKernel(distance);
-            weightedSum += weight * Double.parseDouble(trainingLabels.get(i)); // Assuming labels are numeric
+        // Calculate weighted contributions from the k nearest neighbors
+        for (Neighbor neighbor : kNearestNeighbors) {
+            double weight = gaussianKernel(neighbor.distance);
+            double labelValue = Double.parseDouble(neighbor.label); // Ensure labels are numeric
+            weightedSum += weight * labelValue;
             totalWeight += weight;
         }
 
@@ -100,6 +114,21 @@ public class KNN {
             }
         }
         return mostCommon;
+    }
+
+    // Method to calculate mean squared error
+    public double calculateMSE(List<Double> actualValues, List<Double> predictedValues) {
+        double sumSquaredError = 0.0;
+        int n = actualValues.size();
+
+        // Calculate the sum of squared errors
+        for (int i = 0; i < n; i++) {
+            double error = actualValues.get(i) - predictedValues.get(i);
+            sumSquaredError += error * error;
+        }
+
+        // Return the mean squared error
+        return sumSquaredError / n;
     }
 
     // Inner class to represent a neighbor

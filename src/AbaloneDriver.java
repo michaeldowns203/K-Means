@@ -1,32 +1,65 @@
 import java.util.*;
 import java.io.*;
 
-//no binning
-//no data imputation
-//chunks for 10-fold cross validation ARE shuffled in this class
+// No binning
+// No data imputation
+// Chunks for 10-fold cross-validation ARE shuffled in this class
 public class AbaloneDriver {
+    // Method to scale features using Min-Max Scaling
+    public static List<List<Double>> minMaxScale(List<List<Double>> data) {
+        int numFeatures = data.get(0).size();  // Process all columns as features
+        List<Double> minValues = new ArrayList<>(Collections.nCopies(numFeatures, Double.MAX_VALUE));
+        List<Double> maxValues = new ArrayList<>(Collections.nCopies(numFeatures, Double.MIN_VALUE));
 
-    // Split the dataset into 10 chunks
-    public static List<Object[][]> splitIntoChunks(Object[][] data, Object[] labels, int numChunks) {
-        List<Object[]> dataset = new ArrayList<>();
-        for (int i = 0; i < data.length; i++) {
-            Object[] combined = new Object[data[i].length + 1];
-            System.arraycopy(data[i], 0, combined, 0, data[i].length);
-            combined[combined.length - 1] = labels[i];
+        // Find the min and max values for each feature
+        for (List<Double> row : data) {
+            for (int i = 0; i < numFeatures; i++) {
+                double value = row.get(i);
+                if (value < minValues.get(i)) minValues.set(i, value);
+                if (value > maxValues.get(i)) maxValues.set(i, value);
+            }
+        }
+
+        // Scale the dataset based on min and max values
+        List<List<Double>> scaledData = new ArrayList<>();
+        for (List<Double> row : data) {
+            List<Double> scaledRow = new ArrayList<>();
+            for (int i = 0; i < numFeatures; i++) {
+                double value = row.get(i);
+                double scaledValue = (value - minValues.get(i)) / (maxValues.get(i) - minValues.get(i));
+                scaledRow.add(scaledValue);
+            }
+            scaledData.add(scaledRow);  // Only include scaled features
+        }
+
+        return scaledData;
+    }
+
+
+    // Method to split the dataset into stratified chunks
+    public static List<List<List<Double>>> splitIntoStratifiedChunks(List<List<Double>> data, List<String> labels, int numChunks) {
+        // Combine data and labels into one dataset
+        List<List<Double>> dataset = new ArrayList<>();
+        for (int i = 0; i < data.size(); i++) {
+            List<Double> combined = new ArrayList<>(data.get(i));
+            combined.add(Double.parseDouble(labels.get(i))); // Add label as the last element
             dataset.add(combined);
         }
 
-        // Shuffle the dataset to ensure randomness
-        Collections.shuffle(dataset);
+        // Sort dataset by the last element (target value)
+        dataset.sort(Comparator.comparingDouble(a -> a.get(a.size() - 1)));
 
         // Split into chunks
         int chunkSize = dataset.size() / numChunks;
-        List<Object[][]> chunks = new ArrayList<>();
+        List<List<List<Double>>> chunks = new ArrayList<>();
 
         for (int i = 0; i < numChunks; i++) {
-            Object[][] chunk = new Object[chunkSize][];
+            List<List<Double>> chunk = new ArrayList<>();
             for (int j = 0; j < chunkSize; j++) {
-                chunk[j] = dataset.get(i * chunkSize + j);
+                // Ensure that we don't go out of bounds
+                if (i * chunkSize + j < dataset.size()) {
+                    chunk.add(dataset.get(i * chunkSize + j));
+                }
             }
             chunks.add(chunk);
         }
@@ -53,38 +86,34 @@ public class AbaloneDriver {
             isr = new InputStreamReader(fis);
             stdin = new BufferedReader(isr);
 
-            // Initialize the arrays with the known size
-            Object[] labels = new Object[lineCount];
-            Object[][] data = new Object[lineCount][8];
+            // Initialize the lists
+            List<String> labels = new ArrayList<>();
+            List<List<Double>> data = new ArrayList<>();
 
             String line;
-            int lineNum = 0;
 
-            // Read the file and fill the arrays
+            // Read the file and fill the lists
             while ((line = stdin.readLine()) != null) {
                 String[] rawData = line.split(",");
 
                 // Assign the label (last column)
-                labels[lineNum] = rawData[8];
+                labels.add(rawData[8]);
 
-                data[lineNum][0] = rawData[0];
-                for (int i = 1; i < rawData.length - 1; i++) {
-                    data[lineNum][i] = Double.parseDouble(rawData[i]);
+                // Create a new row for the features
+                List<Double> row = new ArrayList<>();
+                for (int i = 0; i < rawData.length - 2; i++) {
+                    row.add(Double.parseDouble(rawData[i + 1]));
                 }
-
-                lineNum++;
+                data.add(row);
             }
 
             stdin.close();
 
             // Split into 10 chunks
-            List<Object[][]> chunks = splitIntoChunks(data, labels, 10);
+            List<List<List<Double>>> chunks = splitIntoStratifiedChunks(data, labels, 10);
 
             // Loss instance variables
             double totalAccuracy = 0;
-            double totalPrecision = 0;
-            double totalRecall = 0;
-            double totalF1 = 0;
             double total01loss = 0;
 
             // Perform 10-fold cross-validation
@@ -93,44 +122,39 @@ public class AbaloneDriver {
                 List<List<Double>> trainingData = new ArrayList<>();
                 List<String> trainingLabels = new ArrayList<>();
 
-                Object[][] testData = chunks.get(i);
-                Object[] testLabels = new Object[testData.length];
-                for (int j = 0; j < testData.length; j++) {
-                    testLabels[j] = testData[j][testData[j].length - 1]; // Last column is label
+                List<List<Double>> testData = chunks.get(i);  // Use List<List<Double>> for test data
+                List<Double> testLabels = new ArrayList<>();  // Create a list for test labels
+
+                // Extract labels from the test data (last column)
+                for (List<Double> row : testData) {
+                    testLabels.add(row.get(row.size() - 1));  // Last element is the label
                 }
 
                 // Combine the other 9 chunks into the training set
                 for (int j = 0; j < 10; j++) {
                     if (j != i) {
-                        for (Object[] row : chunks.get(j)) {
-                            trainingLabels.add(String.valueOf(row[row.length - 1]));  // Last column is label
-                            List<Double> features = new ArrayList<>();
-                            for (int k = 0; k < row.length - 1; k++) {
-                                features.add((Double) row[k]);
-                            }
-                            trainingData.add(features);
+                        for (List<Double> row : chunks.get(j)) {
+                            trainingLabels.add(String.valueOf(row.get(row.size() - 1)));  // Last element is the label
+                            trainingData.add(new ArrayList<>(row.subList(0, row.size() - 1)));  // All but the last element
                         }
                     }
                 }
 
+                List<List<Double>> scaledTrainingData = minMaxScale(trainingData);
+                List<List<Double>> scaledTestData = minMaxScale(testData);
+
                 // Initialize and train the k-NN model
-                int k = 2; // You can tune this value later
-                KNN knn = new KNN(k, 1, 1); // Set sigma and error threshold as needed
-                knn.fit(trainingData, trainingLabels);
+                int k = 5; // You can tune this value later
+                KNN knn = new KNN(k, .03, .9); // Set sigma and error threshold as needed
+                knn.fit(scaledTrainingData, trainingLabels);
 
                 // Test the classifier
                 int correctPredictions = 0;
-                int truePositives = 0;
-                int falsePositives = 0;
-                int falseNegatives = 0;
-                for (int j = 0; j < testData.length; j++) {
-                    List<Double> testInstance = new ArrayList<>();
-                    for (int l = 0; l < testData[j].length - 1; l++) {
-                        testInstance.add((Double) testData[j][l]);
-                    }
+                for (int j = 0; j < testData.size(); j++) {
+                    List<Double> testInstance = new ArrayList<>(scaledTestData.get(j).subList(0, scaledTestData.get(j).size() - 1));
 
-                    String predicted = knn.predictValue(testInstance);
-                    String actual = testLabels[j].toString();
+                    double predicted = knn.predictValue(testInstance);
+                    double actual = testLabels.get(j);
 
                     // Print the test data, predicted label, and actual label
                     System.out.print("Test Data: [ ");
@@ -139,65 +163,36 @@ public class AbaloneDriver {
                     }
                     System.out.println("] Predicted: " + predicted + " Actual: " + actual);
 
-                    if (predicted.equals(actual)) {
+                    if (knn.isPredictionCorrect(actual, predicted)) {
                         correctPredictions++;
-                    }
-                    // Get true positives, false positives, and false negatives
-                    if (predicted.equals("D1")) {
-                        if (actual.equals("D1")) {
-                            truePositives++;
-                        } else {
-                            falsePositives++;
-                        }
-                    } else if (actual.equals("D1")) {
-                        falseNegatives++;
                     }
                 }
 
-                // Calculate precision and recall
-                double precision = truePositives / (double) (truePositives + falsePositives);
-                double recall = truePositives / (double) (truePositives + falseNegatives);
-                totalPrecision += precision;
-                totalRecall += recall;
-
-                double f1Score = 2 * (precision * recall) / (precision + recall);
-                totalF1 += f1Score;
-
                 // Calculate accuracy for this fold
-                double accuracy = (double) correctPredictions / testData.length;
+                double accuracy = (double) correctPredictions / testData.size();
                 totalAccuracy += accuracy;
 
                 // Calculate 0/1 loss
-                double loss01 = 1.0 - (double) correctPredictions / testData.length;
+                double loss01 = 1.0 - (double) correctPredictions / testData.size();
                 total01loss += loss01;
 
                 // Print loss info
                 System.out.println("Number of correct predictions: " + correctPredictions);
-                System.out.println("Number of test instances: " + testData.length);
+                System.out.println("Number of test instances: " + testData.size());
                 System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
                 System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
-                System.out.println("Precision for class D1 (fold " + (i + 1) + "): " + precision);
-                System.out.println("Recall for class D1 (fold " + (i + 1) + "): " + recall);
-                System.out.println("F1 Score for class D1 (fold " + (i + 1) + "): " + f1Score);
             }
 
             // Average accuracy across all 10 folds
             double averageAccuracy = totalAccuracy / 10;
             double average01loss = total01loss / 10;
-            double averagePrecision = totalPrecision / 10;
-            double averageRecall = totalRecall / 10;
-            double averageF1 = totalF1 / 10;
             System.out.println("Average Accuracy: " + averageAccuracy);
             System.out.println("Average 0/1 Loss: " + average01loss);
-            System.out.println("Average Precision for class D1: " + averagePrecision);
-            System.out.println("Average Recall for class D1: " + averageRecall);
-            System.out.println("Average F1 for class D1: " + averageF1);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
 }
 
 
