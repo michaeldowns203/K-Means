@@ -3,14 +3,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class KNN {
+public class KNNPrint {
     private List<List<Double>> trainingData; // Features of the training data
     private List<String> trainingLabels; // Labels of the training data
     private int k; // Number of neighbors to consider
     private double bandwidth; // Bandwidth for the Gaussian kernel
     private double errorThreshold; // Acceptable error threshold for regression
 
-    public KNN(int k, double bandwidth, double errorThreshold) {
+    public KNNPrint(int k, double bandwidth, double errorThreshold) {
         this.k = k;
         this.bandwidth = bandwidth;
         this.errorThreshold = errorThreshold;
@@ -31,7 +31,7 @@ public class KNN {
         // Calculate distances from the instance to all training instances
         for (int i = 0; i < trainingData.size(); i++) {
             double distance = euclideanDistance(instance, trainingData.get(i));
-            neighbors.add(new Neighbor(distance, trainingLabels.get(i)));
+            neighbors.add(new Neighbor(distance, trainingLabels.get(i), trainingData.get(i)));
         }
 
         // Sort neighbors by distance
@@ -54,7 +54,7 @@ public class KNN {
         // Calculate distances from the instance to all training instances
         for (int i = 0; i < trainingData.size(); i++) {
             double distance = euclideanDistance(instance, trainingData.get(i));
-            neighbors.add(new Neighbor(distance, trainingLabels.get(i)));
+            neighbors.add(new Neighbor(distance, trainingLabels.get(i), trainingData.get(i)));
         }
 
         // Sort neighbors by distance
@@ -89,11 +89,14 @@ public class KNN {
         for (int i = 0; i < instance1.size(); i++) {
             sum += Math.pow(instance1.get(i) - instance2.get(i), 2);
         }
+        //System.out.println(instance1 + " " + instance2);
+        //System.out.println("Euclidean distance: " + Math.sqrt(sum));
         return Math.sqrt(sum);
     }
 
     // Gaussian kernel function
     private double gaussianKernel(double distance) {
+        System.out.println("Euclidean distance: " + distance + " Gaussian kernel: " + Math.exp(-Math.pow(distance, 2) / (2 * Math.pow(bandwidth, 2))));
         return Math.exp(-Math.pow(distance, 2) / (2 * Math.pow(bandwidth, 2)));
     }
 
@@ -132,6 +135,53 @@ public class KNN {
         return sumSquaredError / n;
     }
 
+    // Print method to demonstrate k-NN classification
+    public void demonstrateClassification(List<Double> instance) {
+        List<Neighbor> neighbors = new ArrayList<>();
+
+        // Calculate distances from the instance to all training instances
+        for (int i = 0; i < trainingData.size(); i++) {
+            double distance = euclideanDistance(instance, trainingData.get(i));
+            neighbors.add(new Neighbor(distance, trainingLabels.get(i), trainingData.get(i)));
+        }
+
+        // Sort neighbors by distance
+        Collections.sort(neighbors);
+
+        // Get the k nearest neighbors
+        List<Neighbor> kNearestNeighbors = neighbors.subList(0, Math.min(k, neighbors.size()));
+
+        // Print neighbors
+        System.out.println("Neighbors for classification:");
+        for (Neighbor neighbor : kNearestNeighbors) {
+            System.out.println("Point: " + neighbor.point + ", Distance: " + neighbor.distance + ", Label: " + neighbor.label);
+        }
+
+    }
+
+    // Print method to demonstrate k-NN regression
+    public void demonstrateRegression(List<Double> instance) {
+        List<Neighbor> neighbors = new ArrayList<>();
+
+        // Calculate distances from the instance to all training instances
+        for (int i = 0; i < trainingData.size(); i++) {
+            double distance = euclideanDistance(instance, trainingData.get(i));
+            neighbors.add(new Neighbor(distance, trainingLabels.get(i), trainingData.get(i)));
+        }
+
+        // Sort neighbors by distance
+        Collections.sort(neighbors);
+
+        // Get the k nearest neighbors
+        List<Neighbor> kNearestNeighbors = neighbors.subList(0, Math.min(k, neighbors.size()));
+
+        // Print neighbors
+        System.out.println("Neighbors for regression:");
+        for (Neighbor neighbor : kNearestNeighbors) {
+            System.out.println("Point: " + neighbor.point + ", Distance: " + neighbor.distance + ", Label: " + neighbor.label);
+        }
+    }
+
     public void edit() {
         List<List<Double>> editedTrainingData = new ArrayList<>();
         List<String> editedTrainingLabels = new ArrayList<>();
@@ -146,6 +196,7 @@ public class KNN {
             List<String> tempTrainingLabels = new ArrayList<>(trainingLabels);
             tempTrainingData.remove(i);
             tempTrainingLabels.remove(i);
+            System.out.println(trainingData.get(i));
 
             // Create a temporary KNN model with the remaining data
             KNN tempKNN = new KNN(k, bandwidth, errorThreshold);
@@ -153,18 +204,24 @@ public class KNN {
 
             // Predict the label for the current point using the remaining data
             String predictedLabel = tempKNN.predict(currentPoint);
+            System.out.println("Predicted: " + predictedLabel);
+            System.out.println("Actual: " + currentLabel);
 
             // For classification: if the predicted label matches the current label, keep the point
             if (predictedLabel.equals(currentLabel)) {
                 editedTrainingData.add(currentPoint);
                 editedTrainingLabels.add(currentLabel);
+                System.out.println("Correct; Kept");
+            }
+            else {
+                System.out.println("Incorrect; Removed");
             }
         }
 
         // Update the training data and labels to the edited set
         this.trainingData = editedTrainingData;
         this.trainingLabels = editedTrainingLabels;
-        System.out.println(editedTrainingData.size());
+        System.out.println("Edited dataset size: " + editedTrainingData.size());
     }
 
     public void editR() {
@@ -221,6 +278,8 @@ public class KNN {
                     clusterAssignments.set(i, nearestCluster);
                     converged = false;
                 }
+                System.out.println(trainingData.get(i));
+                System.out.println("Cluster assignment: " + clusterAssignments.get(i));
             }
 
             // Step 3: Update centroids by calculating the mean of points in each cluster
@@ -393,10 +452,12 @@ public class KNN {
     private static class Neighbor implements Comparable<Neighbor> {
         double distance;
         String label;
+        List<Double> point; // Store the point associated with the neighbor
 
-        Neighbor(double distance, String label) {
+        Neighbor(double distance, String label, List<Double> point) {
             this.distance = distance;
             this.label = label;
+            this.point = point;
         }
 
         @Override

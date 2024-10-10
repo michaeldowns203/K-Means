@@ -236,9 +236,11 @@ public class ComputerDriver2 {
                 }
 
                 // Initialize and train the k-NN model
-                int k = 3; // You can tune this value later
-                KNN knn = new KNN(k, 5, 100);
+                int k = 10; // You can tune this value later
+                KNN knn = new KNN(k, 1000, 100);
                 knn.fit(trainingData, trainingLabels);
+                //knn.editR();
+                knn.kMeansAndReduceRegression(175,1000);
 
                 // Test the classifier
                 for (int j = 0; j < testData.size(); j++) {

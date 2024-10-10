@@ -1,8 +1,7 @@
 import java.util.*;
 import java.io.*;
-
 //10% cross validation for tuning
-public class GlassDriver {
+public class BreastDriverPE {
     public static List<List<Object>> extractTenPercent(List<List<Object>> dataset) {
         // Create a map to hold instances of each class
         Map<String, List<List<Object>>> classMap = new HashMap<>();
@@ -75,7 +74,7 @@ public class GlassDriver {
 
 
     public static void main(String[] args) throws IOException {
-        String inputFile1 = "src/glass.data";
+        String inputFile1 = "src/breast-cancer-wisconsin.data";
         try {
             FileInputStream fis = new FileInputStream(inputFile1);
             InputStreamReader isr = new InputStreamReader(fis);
@@ -110,14 +109,18 @@ public class GlassDriver {
 
                 // Fill the data row (columns 2 to 10)
                 for (int i = 1; i < rawData.length - 1; i++) {
-                    row.add(Double.parseDouble(rawData[i]));
+                    if (rawData[i].equals("?")) {
+                        row.add((Math.random() * 10) + 1); // Handle missing values
+                    } else {
+                        row.add(Double.parseDouble(rawData[i]));
+                    }
                 }
                 row.add(labels.get(lineNum)); // Add the label to the row
                 dataset.add(row);
                 lineNum++;
             }
 
-            System.out.println(dataset.size());
+            System.out.println("Dataset size: " + dataset.size());
 
             stdin.close();
 
@@ -155,11 +158,11 @@ public class GlassDriver {
                 }
 
                 // Initialize and train the k-NN model
-                int k = 10; // You can tune this value later
-                KNN knn = new KNN(k, 1, 1); // Bandwidth and error threshold are irrelevant
+                int k = 1; // You can tune this value later
+                KNNPrint knn = new KNNPrint(k, 1, 1); // Bandwidth and error threshold are irrelevant
                 knn.fit(trainingData, trainingLabels);
                 //knn.edit();
-                //knn.kMeansAndReduce(133, 1000);
+                knn.kMeansAndReduce(600, 1000);
 
                 // Test the classifier using the test set
                 int correctPredictions = 0;
@@ -192,15 +195,18 @@ public class GlassDriver {
                         correctPredictions++;
                     }
                     // Get true positives, false positives, and false negatives
-                    if (predicted.equals("1")) {
-                        if (actual.equals("1")) {
+                    if (predicted.equals("4")) {
+                        if (actual.equals("4")) {
                             truePositives++;
                         } else {
                             falsePositives++;
                         }
-                    } else if (actual.equals("1")) {
+                    } else if (actual.equals("4")) {
                         falseNegatives++;
                     }
+
+                    knn.demonstrateClassification(testInstance);
+
                 }
 
                 // Calculate precision and recall
@@ -225,9 +231,9 @@ public class GlassDriver {
                 System.out.println("Number of test instances: " + testSet.size());
                 System.out.println("Fold " + (i + 1) + " Accuracy: " + accuracy);
                 System.out.println("Fold " + (i + 1) + " 0/1 loss: " + loss01);
-                System.out.println("Precision for class 1 (hold-out fold " + (i + 1) + "): " + precision);
-                System.out.println("Recall for class 1 (hold-out fold " + (i + 1) + "): " + recall);
-                System.out.println("F1 Score for class 1 (hold-out fold " + (i + 1) + "): " + f1Score);
+                System.out.println("Precision for class 4 (hold-out fold " + (i + 1) + "): " + precision);
+                System.out.println("Recall for class 4 (hold-out fold " + (i + 1) + "): " + recall);
+                System.out.println("F1 Score for class 4 (hold-out fold " + (i + 1) + "): " + f1Score);
             }
 
             // Average accuracy across all 10 folds
@@ -238,9 +244,9 @@ public class GlassDriver {
             double averageF1 = totalF1 / 10;
             System.out.println("Average Accuracy: " + averageAccuracy);
             System.out.println("Average 0/1 Loss: " + average01loss);
-            System.out.println("Average Precision for class 1: " + averagePrecision);
-            System.out.println("Average Recall for class 1: " + averageRecall);
-            System.out.println("Average F1 for class 1: " + averageF1);
+            System.out.println("Average Precision for class 4: " + averagePrecision);
+            System.out.println("Average Recall for class 4: " + averageRecall);
+            System.out.println("Average F1 for class 4: " + averageF1);
 
         } catch (IOException e) {
             e.printStackTrace();

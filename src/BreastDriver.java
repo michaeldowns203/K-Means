@@ -156,9 +156,11 @@ public class BreastDriver {
                 }
 
                 // Initialize and train the k-NN model
-                int k = 1; // You can tune this value later
+                int k = 10; // You can tune this value later
                 KNN knn = new KNN(k, 1, 1); // Bandwidth and error threshold are irrelevant
                 knn.fit(trainingData, trainingLabels);
+                //knn.edit();
+                //knn.kMeansAndReduce(600, 1000);
 
                 // Test the classifier using the test set
                 int correctPredictions = 0;

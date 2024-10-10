@@ -55,6 +55,7 @@ public class EditedKNN {
         // Update the training data and labels to the edited set
         this.trainingData = editedTrainingData;
         this.trainingLabels = editedTrainingLabels;
+        System.out.println(editedTrainingData.size());
     }
 
     public void editR() {
@@ -89,6 +90,7 @@ public class EditedKNN {
         // Update the training data and labels to the edited set
         this.trainingData = editedTrainingData;
         this.trainingLabels = editedTrainingLabels;
+        System.out.println(editedTrainingData.size());
     }
 
 

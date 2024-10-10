@@ -1,10 +1,8 @@
 import java.util.*;
 import java.io.*;
 
-// Binning
-// No data imputation
-// Chunks for 10-fold cross-validation ARE shuffled in this class
-public class ComputerDriverE {
+//10% cross validation for tuning
+public class ComputerDriverP {
     // Method to scale labels using Min-Max Scaling
     public static List<Double> minMaxScaleLabels(List<Double> labels) {
         // Scale the labels using Min-Max scaling
@@ -170,8 +168,6 @@ public class ComputerDriverE {
                 lineNum++;
             }
 
-            System.out.println(dataset.size());
-
             stdin.close();
 
             // Extract stratified tuning data (10%)
@@ -241,9 +237,10 @@ public class ComputerDriverE {
 
                 // Initialize and train the k-NN model
                 int k = 3; // You can tune this value later
-                EditedKNN knn = new EditedKNN(k, 5, 100);
+                KNNPrint knn = new KNNPrint(k, 5, 100);
                 knn.fit(trainingData, trainingLabels);
-                knn.editR();
+                //knn.editR();
+                knn.kMeansAndReduceRegression(150, 1000);
 
                 // Test the classifier
                 for (int j = 0; j < testData.size(); j++) {
@@ -263,6 +260,9 @@ public class ComputerDriverE {
                         System.out.print(feature + " ");
                     }
                     System.out.println("] Predicted: " + predicted + " Actual: " + actual);
+
+                    knn.demonstrateRegression(testInstance);
+
                 }
 
                 double mse = knn.calculateMSE(actualList, predictedList);

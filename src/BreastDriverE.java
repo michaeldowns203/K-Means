@@ -120,6 +120,8 @@ public class BreastDriverE {
                 lineNum++;
             }
 
+            System.out.println(dataset.size());
+
             stdin.close();
 
             // Extract 10% of the dataset for testing

@@ -243,9 +243,11 @@ public class AbaloneDriver {
                 }
 
                 // Initialize and train the k-NN model
-                int k = 3; // You can tune this value later
-                KNN knn = new KNN(k, 5, 100);
+                int k = 10; // You can tune this value later
+                KNN knn = new KNN(k, 10, 5);
                 knn.fit(trainingData, trainingLabels);
+                //knn.editR();
+                knn.kMeansAndReduceRegression(3500, 1000);
 
                 // Test the classifier
                 for (int j = 0; j < testData.size(); j++) {
