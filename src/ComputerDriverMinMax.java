@@ -4,7 +4,7 @@ import java.io.*;
 // Binning
 // No data imputation
 // Chunks for 10-fold cross-validation ARE shuffled in this class
-public class ComputerDriverE {
+public class ComputerDriverMinMax {
     // Method to scale labels using Min-Max Scaling
     public static List<Double> minMaxScaleLabels(List<Double> labels) {
         // Scale the labels using Min-Max scaling
@@ -241,19 +241,19 @@ public class ComputerDriverE {
 
                 // Initialize and train the k-NN model
                 int k = 3; // You can tune this value later
-                EditedKNN knn = new EditedKNN(k, 5, 100);
-                knn.fit(trainingData, trainingLabels);
+                KNN knn = new KNN(k, 5, 100);
+                knn.fit(scaledTrainingData, stringScaledTrainingLabels);
                 knn.editR();
 
                 // Test the classifier
-                for (int j = 0; j < testData.size(); j++) {
+                for (int j = 0; j < scaledTestData.size(); j++) {
                     List<Double> testInstance = new ArrayList<>();
-                    for (int l = 0; l < testData.get(j).size() - 1; l++) {
-                        testInstance.add((Double) testData.get(j).get(l));
+                    for (int l = 0; l < scaledTestData.get(j).size() - 1; l++) {
+                        testInstance.add((Double) scaledTestData.get(j).get(l));
                     }
 
                     double predicted = knn.predictValue(testInstance);
-                    double actual = Double.parseDouble(testLabels.get(j));
+                    double actual = scaledTestLabels.get(j);
                     predictedList.add(predicted);
                     actualList.add(actual);
 
